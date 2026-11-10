@@ -61,6 +61,33 @@ end $$;
 update public.profiles set display_name = 'hack' where id = '00000000-0000-0000-0000-00000000000a';
 delete from public.water_logs;
 
+-- Etapa 2: B no puede enlazar el alimento privado de A en su receta ni en su diario
+do $$
+declare a_food uuid; b_recipe uuid;
+begin
+  reset role;
+  select id into a_food from public.foods where name = 'Alimento A';
+  set role authenticated;
+  insert into public.recipes (name) values ('Receta B') returning id into b_recipe;
+  begin
+    insert into public.recipe_ingredients (recipe_id, food_id, grams) values (b_recipe, a_food, 100);
+    raise exception 'FALLO: B usó un alimento privado de A en su receta';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    insert into public.food_logs (log_date, meal, food_id, name, grams, kcal) values (current_date, 'lunch', a_food, 'x', 100, 100);
+    raise exception 'FALLO: B registró un alimento privado de A';
+  exception when insufficient_privilege then null;
+  end;
+  -- Con un alimento propio sí funciona
+  insert into public.foods (name, kcal_per_100g) values ('Alimento B', 50);
+  insert into public.recipe_ingredients (recipe_id, food_id, grams)
+    select b_recipe, id, 100 from public.foods where name = 'Alimento B';
+  -- Borrar la receta borra sus ingredientes
+  delete from public.recipes where id = b_recipe;
+  if exists (select 1 from public.recipe_ingredients) then raise exception 'ingredientes huérfanos'; end if;
+end $$;
+
 -- Usuario anónimo no ve nada
 reset role;
 set role anon;

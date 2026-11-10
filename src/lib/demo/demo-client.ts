@@ -130,7 +130,7 @@ class Query implements PromiseLike<{ data: unknown; error: unknown; count: numbe
   private cols = '*';
   private orderBy: { col: string; asc: boolean } | null = null;
   private max: number | null = null;
-  private single: 'maybe' | 'one' | null = null;
+  private singleMode: 'maybe' | 'one' | null = null;
   private payload: Row[] = [];
   private conflict: string[] = [];
   private countMode = false;
@@ -138,8 +138,11 @@ class Query implements PromiseLike<{ data: unknown; error: unknown; count: numbe
 
   constructor(private table: string) {}
 
+  private returning = false;
+
   select(cols = '*', opts?: { count?: string; head?: boolean }) {
     if (this.op === 'select') this.cols = cols;
+    else this.returning = true;
     this.countMode = !!opts?.count;
     this.head = !!opts?.head;
     return this;
@@ -165,6 +168,13 @@ class Query implements PromiseLike<{ data: unknown; error: unknown; count: numbe
   lt(c: string, v: string | number) { return this.add(c, (x) => (x as string) < v); }
   lte(c: string, v: string | number) { return this.add(c, (x) => (x as string) <= v); }
   gte(c: string, v: string | number) { return this.add(c, (x) => (x as string) >= v); }
+  neq(c: string, v: unknown) { return this.add(c, (x) => x !== v); }
+  in(c: string, v: unknown[]) { return this.add(c, (x) => v.includes(x)); }
+  ilike(c: string, pattern: string) {
+    const esc = pattern.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/%/g, '.*').replace(/_/g, '.');
+    const re = new RegExp(`^${esc}$`);
+    return this.add(c, (x) => typeof x === 'string' && re.test(x.toLowerCase()));
+  }
   contains(c: string, v: unknown[]) { return this.add(c, (x) => Array.isArray(x) && v.every((i) => x.includes(i))); }
   not(c: string, op: string, v: unknown) {
     if (op === 'is' && v === null) return this.add(c, (x) => x !== null && x !== undefined);
@@ -172,7 +182,8 @@ class Query implements PromiseLike<{ data: unknown; error: unknown; count: numbe
   }
   order(col: string, o?: { ascending?: boolean }) { this.orderBy = { col, asc: o?.ascending !== false }; return this; }
   limit(n: number) { this.max = n; return this; }
-  maybeSingle() { this.single = 'maybe'; return this; }
+  maybeSingle() { this.singleMode = 'maybe'; return this; }
+  single() { this.singleMode = 'one'; return this; }
 
   then<A = unknown, B = never>(
     ok?: ((v: { data: unknown; error: unknown; count: number | null }) => A | PromiseLike<A>) | null,
@@ -197,14 +208,20 @@ class Query implements PromiseLike<{ data: unknown; error: unknown; count: numbe
     const uid = currentUser.id;
 
     if (this.op === 'insert' || this.op === 'upsert') {
+      const inserted: Row[] = [];
       for (const p of this.payload) {
         const owner = (p.user_id ?? uid) as string;
         if (this.table !== 'profiles' && owner !== uid) return { data: null, error: err('new row violates row-level security policy'), count: null };
         const existing = this.op === 'upsert' ? rows.find((r) => this.visible(r, true) && this.conflict.every((k) => r[k] === (k === 'user_id' ? owner : p[k]))) : undefined;
         if (existing) Object.assign(existing, p);
-        else rows.push({ id: uuid(), created_at: new Date().toISOString(), ...p, user_id: owner });
+        else {
+          const row = { id: uuid(), created_at: new Date().toISOString(), ...p, user_id: owner };
+          rows.push(row);
+          inserted.push(row);
+        }
       }
       save(db);
+      if (this.returning) return { data: this.singleMode ? (inserted[0] ?? null) : inserted, error: null, count: null };
       return { data: null, error: null, count: null };
     }
     if (this.op === 'update') {
@@ -213,6 +230,15 @@ class Query implements PromiseLike<{ data: unknown; error: unknown; count: numbe
       return { data: null, error: null, count: null };
     }
     if (this.op === 'delete') {
+      if (this.table === 'foods') {
+        const ids = new Set(rows.filter((r) => match(r, true)).map((r) => r.id));
+        if ((db.tables.recipe_ingredients ?? []).some((i) => ids.has(i.food_id)))
+          return { data: null, error: err('update or delete on table "foods" violates foreign key constraint'), count: null };
+      }
+      if (this.table === 'recipes') {
+        const ids = new Set(rows.filter((r) => match(r, true)).map((r) => r.id));
+        db.tables.recipe_ingredients = (db.tables.recipe_ingredients ?? []).filter((i) => !ids.has(i.recipe_id));
+      }
       db.tables[this.table] = rows.filter((r) => !match(r, true));
       save(db);
       return { data: null, error: null, count: null };
@@ -240,7 +266,7 @@ class Query implements PromiseLike<{ data: unknown; error: unknown; count: numbe
     });
 
     if (this.head) return { data: null, error: null, count };
-    if (this.single) return { data: data[0] ?? null, error: null, count: this.countMode ? count : null };
+    if (this.singleMode) return { data: data[0] ?? null, error: null, count: this.countMode ? count : null };
     return { data, error: null, count: this.countMode ? count : null };
   }
 }

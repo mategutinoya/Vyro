@@ -3,7 +3,7 @@
 App móvil de nutrición y entrenamiento para iOS y Android.
 React Native + Expo (SDK 58) · TypeScript · Expo Router · Supabase.
 
-> Estado: **Etapa 1 del MVP** — acceso, onboarding con cálculo de objetivos y pantalla de Inicio funcional.
+> Estado: **Etapa 2 del MVP** — Inicio + Alimentación (diario, búsqueda, alimentos propios, Open Food Facts y recetas).
 > Plan completo en [`docs/PLAN.md`](docs/PLAN.md).
 
 ---
@@ -27,9 +27,12 @@ El modo demo (`EXPO_PUBLIC_DEMO=1`) usa un sustituto local de la base de datos (
 ## 2. Configurar Supabase (≈10 minutos)
 
 1. Entra en supabase.com → **New project**. Elige una región cercana (p. ej. *West EU*) y guarda la contraseña de la base de datos en un lugar seguro.
-2. **Crear las tablas:** menú lateral → **SQL Editor** → **New query**. Abre el archivo
-   `supabase/migrations/20261110000000_init.sql` de este proyecto, copia **todo** su contenido, pégalo y pulsa **Run**.
-   Debe terminar con “Success”.
+2. **Crear las tablas:** menú lateral → **SQL Editor** → **New query**. Ejecuta **en orden** cada archivo de
+   `supabase/migrations/` (copia **todo** su contenido, pégalo y pulsa **Run**; debe terminar con “Success”):
+   1. `20261110000000_init.sql` — tablas y seguridad (Etapa 1).
+   2. `20261111000000_ownership_checks.sql` — protección extra para recetas y diario (Etapa 2).
+
+   Si ya ejecutaste el primero, ejecuta sólo los nuevos.
 3. **Acceso por correo:** menú → **Authentication → Sign In / Providers → Email**.
    - Para uso personal puedes **desactivar “Confirm email”** y así entras directamente al registrarte.
    - Si lo dejas activado, recibirás un correo de confirmación: púlsalo y luego inicia sesión en la app.

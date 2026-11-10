@@ -60,11 +60,13 @@ Políticas: CRUD sólo sobre filas propias; catálogos públicos legibles pero n
 6. Inicio: calorías, macros, agua (registrar/deshacer), entreno del día, resumen semanal. ✅
 7. Pruebas unitarias + typecheck + lint + bundle iOS/Android. ✅
 
-**Etapa 2 — Alimentación**
-- Diario por fecha con las 4 comidas; añadir/editar/eliminar registros.
-- Crear alimentos propios (valores por 100 g) y buscar entre ellos.
-- Búsqueda en **Open Food Facts** (base pública real, sin clave) y escáner de código de barras.
-- Recetas a partir de alimentos; registrar raciones.
+**Etapa 2 — Alimentación ✅**
+- Diario por fecha con las 4 comidas; añadir/editar/eliminar registros. ✅
+- Crear y editar alimentos propios (valores por 100 g) y buscar entre ellos; recientes. ✅
+- Búsqueda en **Open Food Facts** (base pública real, sin clave); los productos elegidos se guardan como copia propia. ✅
+- Recetas a partir de alimentos; registrar raciones. ✅
+- Integridad: no se pueden enlazar alimentos/recetas privados de otro usuario (triggers + pruebas). ✅
+- Pendiente para más adelante: escáner de código de barras (la función `getOpenFoodFactsProduct` ya existe).
 
 **Etapa 3 — Entrenamientos**
 - Rutinas con ejercicios (catálogo + propios), días de la semana.
