@@ -88,6 +88,59 @@ begin
   if exists (select 1 from public.recipe_ingredients) then raise exception 'ingredientes huérfanos'; end if;
 end $$;
 
+-- Etapa 3: entrenamientos e IA
+do $$
+declare a_routine uuid; b_session uuid; ex uuid; left_ integer; i integer;
+begin
+  reset role;
+  select id into a_routine from public.routines where name = 'Empuje';
+  select id into ex from public.exercises where user_id is null limit 1;
+  set role authenticated;  -- sigue siendo B
+
+  -- B no puede iniciar sesión con la rutina de A ni añadirla a la suya
+  begin
+    insert into public.workout_sessions (routine_id, name) values (a_routine, 'x');
+    raise exception 'FALLO: B usó la rutina de A';
+  exception when insufficient_privilege then null;
+  end;
+
+  -- B sí puede entrenar con el catálogo público
+  insert into public.workout_sessions (name) values ('Libre') returning id into b_session;
+  insert into public.workout_sets (session_id, exercise_id, set_index, reps, weight_kg) values (b_session, ex, 0, 10, 60);
+
+  -- Sólo un entrenamiento en curso a la vez
+  begin
+    insert into public.workout_sessions (name) values ('Otra');
+    raise exception 'FALLO: dos entrenamientos en curso';
+  exception when unique_violation then null;
+  end;
+
+  -- B no puede añadir series a una sesión ajena aunque conozca su id
+  reset role;
+  insert into public.workout_sessions (user_id, name)
+    values ('00000000-0000-0000-0000-00000000000a', 'Sesión A') returning id into a_routine;
+  set role authenticated;
+  begin
+    insert into public.workout_sets (session_id, exercise_id, set_index) values (a_routine, ex, 0);
+    raise exception 'FALLO: B añadió series a la sesión de A';
+  exception when insufficient_privilege then null;
+  end;
+
+  -- Cupo de IA: 15 usos diarios en el plan gratuito
+  for i in 1..15 loop
+    left_ := public.consume_ai_quota();
+  end loop;
+  if left_ <> 0 then raise exception 'cupo IA incorrecto: %', left_; end if;
+  if public.consume_ai_quota() <> -1 then raise exception 'FALLO: superó el cupo de IA'; end if;
+
+  -- Nadie puede escribir su propio consumo directamente
+  begin
+    update public.ai_usage set count = 0;
+    if exists (select 1 from public.ai_usage where count = 0) then raise exception 'FALLO: B reinició su cupo'; end if;
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+
 -- Usuario anónimo no ve nada
 reset role;
 set role anon;

@@ -1,6 +1,7 @@
+import { router } from 'expo-router';
 import { View } from 'react-native';
 
-import { AppText, Card } from '@/components/ui';
+import { AppText, Card, PressableScale } from '@/components/ui';
 import type { TodayWorkout } from '@/features/workouts/api';
 import { colors, radius, space } from '@/theme/tokens';
 
@@ -22,12 +23,16 @@ export function WorkoutCard({ data }: { data: TodayWorkout }) {
   } else {
     title = 'Sin entrenamiento programado';
     status = 'rest';
-    detail = 'Asigna días a tus rutinas para verlas aquí.';
+    detail = 'Asigna días a tus rutinas en la pestaña Entreno.';
   }
 
   const badge = { done: 'Completado', active: 'En curso', planned: 'Hoy', rest: 'Descanso' }[status];
 
+  const open = () =>
+    session ? router.push({ pathname: '/workout/session/[id]', params: { id: session.id } }) : router.push('/workouts');
+
   return (
+    <PressableScale accessibilityRole="button" accessibilityLabel={`Entrenamiento del día: ${title}`} onPress={open} haptic={false} scaleTo={0.985}>
     <Card style={{ gap: space.sm }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
         <AppText variant="overline" color={colors.textSecondary}>Entrenamiento del día</AppText>
@@ -44,5 +49,6 @@ export function WorkoutCard({ data }: { data: TodayWorkout }) {
       <AppText variant="heading">{title}</AppText>
       <AppText variant="caption" color={colors.textSecondary}>{detail}</AppText>
     </Card>
+    </PressableScale>
   );
 }

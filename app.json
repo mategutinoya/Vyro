@@ -35,6 +35,14 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Vyro usa la cámara para fotografiar tus comidas y estimar sus calorías.",
+          "photosPermission": "Vyro accede a tus fotos para analizar comidas que ya fotografiaste.",
+          "microphonePermission": false
+        }
       ]
     ],
     "experiments": {

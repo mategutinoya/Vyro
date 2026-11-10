@@ -3,7 +3,7 @@
 App móvil de nutrición y entrenamiento para iOS y Android.
 React Native + Expo (SDK 58) · TypeScript · Expo Router · Supabase.
 
-> Estado: **Etapa 2 del MVP** — Inicio + Alimentación (diario, búsqueda, alimentos propios, Open Food Facts y recetas).
+> Estado: **Etapa 3 del MVP** — Inicio, Alimentación (con registro por foto e IA) y Entrenamientos.
 > Plan completo en [`docs/PLAN.md`](docs/PLAN.md).
 
 ---
@@ -31,6 +31,7 @@ El modo demo (`EXPO_PUBLIC_DEMO=1`) usa un sustituto local de la base de datos (
    `supabase/migrations/` (copia **todo** su contenido, pégalo y pulsa **Run**; debe terminar con “Success”):
    1. `20261110000000_init.sql` — tablas y seguridad (Etapa 1).
    2. `20261111000000_ownership_checks.sql` — protección extra para recetas y diario (Etapa 2).
+   3. `20261112000000_workouts_and_ai.sql` — entrenamientos y límite diario de la IA (Etapa 3).
 
    Si ya ejecutaste el primero, ejecuta sólo los nuevos.
 3. **Acceso por correo:** menú → **Authentication → Sign In / Providers → Email**.
@@ -40,6 +41,32 @@ El modo demo (`EXPO_PUBLIC_DEMO=1`) usa un sustituto local de la base de datos (
    - **Project URL** → `https://xxxx.supabase.co`
    - **Publishable key** (`sb_publishable_…`). En proyectos antiguos se llama **anon public**; también sirve.
    - ⚠️ **Nunca** copies la *secret key* ni la *service_role key* en la app. La app se niega a arrancar si detecta una.
+
+## 2b. Activar el registro de comidas con foto (IA)
+
+La foto se analiza en un servidor seguro (una *Edge Function* de Supabase). La clave de la IA vive **sólo** allí:
+nunca dentro de la app ni en el archivo `.env`.
+
+1. **Clave de Anthropic:** entra en console.anthropic.com → **API Keys** → *Create Key*. Necesitas añadir saldo en
+   **Billing**. Coste orientativo: unos 0,03–0,06 USD por foto (estimación, depende del tamaño de la respuesta).
+2. **Guardar la clave en Supabase:** panel de tu proyecto → **Edge Functions** → **Secrets** (o *Manage secrets*) →
+   añade `ANTHROPIC_API_KEY` con el valor de tu clave. No la pegues en ningún otro sitio.
+3. **Publicar la función** desde la carpeta del proyecto (te pedirá iniciar sesión en Supabase la primera vez).
+   `TU_REF` es el identificador del proyecto: lo ves en la URL del panel (`supabase.com/dashboard/project/TU_REF`).
+
+```bash
+npx supabase login
+```
+
+```bash
+npx supabase functions deploy analyze-meal --project-ref TU_REF
+```
+
+4. Prueba en la app: **Comidas → ◉** (o “Registrar con foto” al añadir). Cada usuario tiene **15 análisis al día**
+   (100 con el futuro plan Pro); el límite lo aplica la base de datos.
+
+Si al analizar ves “Inicia sesión para usar esta función” aunque hayas iniciado sesión, vuelve a publicarla con
+`--no-verify-jwt` al final del comando: la propia función sigue comprobando quién eres.
 
 ## 3. Arrancar el proyecto en tu ordenador
 

@@ -19,7 +19,7 @@ interface Props {
 
 /** Fila de lista: nombre + detalle a la izquierda, cifra a la derecha. */
 export function ListRow({ title, subtitle, value, valueSub, onPress, onLongPress, right, accessibilityLabel }: Props) {
-  return (
+  const content = (
     <PressableScale
       accessibilityRole={onPress ? 'button' : undefined}
       accessibilityLabel={accessibilityLabel}
@@ -27,7 +27,7 @@ export function ListRow({ title, subtitle, value, valueSub, onPress, onLongPress
       scaleTo={0.985}
       onPress={onPress}
       onLongPress={onLongPress}
-      style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, paddingVertical: space.md }}>
+      style={{ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: space.md, paddingVertical: space.md }}>
       <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
         <AppText variant="bodyStrong" numberOfLines={1}>{title}</AppText>
         {subtitle ? <AppText variant="caption" color={colors.textSecondary} numberOfLines={1}>{subtitle}</AppText> : null}
@@ -38,8 +38,15 @@ export function ListRow({ title, subtitle, value, valueSub, onPress, onLongPress
           {valueSub ? <AppText variant="caption" color={colors.textTertiary}>{valueSub}</AppText> : null}
         </View>
       ) : null}
-      {right}
     </PressableScale>
+  );
+  // El elemento de la derecha (p. ej. un botón) va fuera de la zona pulsable: nunca botón dentro de botón.
+  if (!right) return content;
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
+      {content}
+      {right}
+    </View>
   );
 }
 

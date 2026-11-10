@@ -121,6 +121,7 @@ export interface NewFoodLog extends Macros {
   grams: number;
   food_id?: string | null;
   recipe_id?: string | null;
+  entry_source?: 'manual' | 'recipe' | 'ai_photo';
 }
 
 export function useAddFoodLog() {
@@ -132,6 +133,20 @@ export function useAddFoodLog() {
       if (error) throw error;
     },
     onSuccess: (_d, log) => invalidateDay(qc, log.log_date),
+  });
+}
+
+/** Guarda varios registros a la vez (p. ej. los alimentos detectados en una foto). */
+export function useAddFoodLogs() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (logs: NewFoodLog[]) => {
+      if (!logs.length) return;
+      const userId = await requireUserId();
+      const { error } = await supabase.from('food_logs').insert(logs.map((l) => ({ ...l, user_id: userId })));
+      if (error) throw error;
+    },
+    onSuccess: (_d, logs) => [...new Set(logs.map((l) => l.log_date))].forEach((d) => invalidateDay(qc, d)),
   });
 }
 

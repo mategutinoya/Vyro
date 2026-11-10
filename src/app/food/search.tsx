@@ -4,7 +4,7 @@ import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, TextInpu
 import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { relativeDayLabel } from '@/components/ui/DateNavigator';
-import { AppText, Button, Card, Divider, ListRow, ScreenHeader, Segmented } from '@/components/ui';
+import { AppText, Button, Card, Divider, ListRow, PressableScale, ScreenHeader, Segmented } from '@/components/ui';
 import { MEAL_LABELS } from '@/features/nutrition/api';
 import { importOffFood, useFoodSearch, useOffSearch, useRecentFoods, type Food } from '@/features/nutrition/foods';
 import type { OffFood } from '@/features/nutrition/off';
@@ -78,6 +78,22 @@ export default function FoodSearchScreen() {
             </AppText>
           ) : null}
         </View>
+        {flow.mode === 'log' ? (
+          <PressableScale
+            accessibilityRole="button"
+            accessibilityLabel="Registrar con foto e IA"
+            onPress={() => router.push({ pathname: '/food/photo', params })}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.md, borderRadius: radius.md, backgroundColor: colors.accentDim, borderWidth: 1, borderColor: 'rgba(198, 244, 50, 0.25)' }}>
+            <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' }}>
+              <AppText variant="bodyStrong" color={colors.onAccent}>◉</AppText>
+            </View>
+            <View style={{ flex: 1 }}>
+              <AppText variant="bodyStrong" color={colors.accent}>Registrar con foto</AppText>
+              <AppText variant="caption" color={colors.textSecondary}>La IA estima alimentos, gramos y macros</AppText>
+            </View>
+            <AppText variant="heading" color={colors.accent}>›</AppText>
+          </PressableScale>
+        ) : null}
         {flow.mode === 'log' ? (
           <Segmented<Tab> value={tab} onChange={setTab} options={[{ value: 'foods', label: 'Alimentos' }, { value: 'recipes', label: 'Recetas' }]} />
         ) : null}

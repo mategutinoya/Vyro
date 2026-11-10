@@ -74,10 +74,15 @@ function RootNavigator() {
       <Stack.Protected guard={signedIn && onboarded}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="food/search" />
+        <Stack.Screen name="food/photo" />
         <Stack.Screen name="food/amount" />
         <Stack.Screen name="food/new" />
         <Stack.Screen name="food/log/[id]" />
         <Stack.Screen name="recipe/[id]" />
+        <Stack.Screen name="workout/routine/[id]" />
+        <Stack.Screen name="workout/exercises" />
+        <Stack.Screen name="workout/session/[id]" />
+        <Stack.Screen name="workout/history" />
       </Stack.Protected>
     </Stack>
   );

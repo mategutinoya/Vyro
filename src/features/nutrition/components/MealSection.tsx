@@ -28,6 +28,13 @@ export function MealSection({ meal, date, logs }: Props) {
         </View>
         <PressableScale
           accessibilityRole="button"
+          accessibilityLabel={`Foto de ${MEAL_LABELS[meal]}`}
+          onPress={() => router.push({ pathname: '/food/photo', params: { date, meal } })}
+          style={{ width: 36, height: 36, borderRadius: radius.pill, backgroundColor: colors.surfaceRaised, alignItems: 'center', justifyContent: 'center' }}>
+          <AppText variant="bodyStrong" color={colors.text}>◉</AppText>
+        </PressableScale>
+        <PressableScale
+          accessibilityRole="button"
           accessibilityLabel={`Añadir a ${MEAL_LABELS[meal]}`}
           onPress={add}
           style={{ height: 36, paddingHorizontal: space.md, borderRadius: radius.pill, backgroundColor: colors.accentDim, alignItems: 'center', justifyContent: 'center' }}>

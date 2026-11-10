@@ -16,6 +16,15 @@ const SESSION_KEY = 'vyro-demo-session-v1';
 
 /** Tablas con catálogo público (user_id NULL) además de filas propias. */
 const PUBLIC_CATALOG = new Set(['foods', 'exercises']);
+/** Valores por defecto de columnas, igual que en la migración SQL. */
+const DEFAULTS: Record<string, () => Row> = {
+  routines: () => ({ archived: false, weekdays: [], position: 0, notes: null }),
+  workout_sessions: () => ({ started_at: new Date().toISOString(), ended_at: null, notes: null, routine_id: null }),
+  workout_sets: () => ({ completed: false, completed_at: null, exercise_position: 0, reps: null, weight_kg: null }),
+  food_logs: () => ({ entry_source: 'manual', food_id: null, recipe_id: null }),
+  routine_exercises: () => ({ position: 0, target_sets: 3, target_reps: null, rest_seconds: 90 }),
+};
+
 /** Relaciones para los agregados embebidos `tabla(count)`. */
 const FOREIGN_KEYS: Record<string, string> = { routine_exercises: 'routine_id', workout_sets: 'session_id' };
 
@@ -33,6 +42,54 @@ function storage(): Storage | null {
   }
 }
 
+/** Mismo catálogo público de ejercicios que la migración inicial (sólo nombres). */
+const EXERCISE_CATALOG: [string, string, string][] = [
+  ['Press de banca', 'chest', 'barbell'],
+  ['Press inclinado con mancuernas', 'chest', 'dumbbell'],
+  ['Aperturas en polea', 'chest', 'cable'],
+  ['Fondos en paralelas', 'chest', 'bodyweight'],
+  ['Flexiones', 'chest', 'bodyweight'],
+  ['Dominadas', 'back', 'bodyweight'],
+  ['Remo con barra', 'back', 'barbell'],
+  ['Remo con mancuerna', 'back', 'dumbbell'],
+  ['Jalón al pecho', 'back', 'cable'],
+  ['Remo en polea baja', 'back', 'cable'],
+  ['Peso muerto', 'back', 'barbell'],
+  ['Press militar', 'shoulders', 'barbell'],
+  ['Press de hombro con mancuernas', 'shoulders', 'dumbbell'],
+  ['Elevaciones laterales', 'shoulders', 'dumbbell'],
+  ['Face pull', 'shoulders', 'cable'],
+  ['Curl con barra', 'biceps', 'barbell'],
+  ['Curl con mancuernas', 'biceps', 'dumbbell'],
+  ['Curl martillo', 'biceps', 'dumbbell'],
+  ['Extensión de tríceps en polea', 'triceps', 'cable'],
+  ['Press francés', 'triceps', 'barbell'],
+  ['Sentadilla', 'legs', 'barbell'],
+  ['Prensa de piernas', 'legs', 'machine'],
+  ['Zancadas', 'legs', 'dumbbell'],
+  ['Extensión de cuádriceps', 'legs', 'machine'],
+  ['Curl femoral', 'legs', 'machine'],
+  ['Peso muerto rumano', 'legs', 'barbell'],
+  ['Elevación de gemelos', 'legs', 'machine'],
+  ['Hip thrust', 'glutes', 'barbell'],
+  ['Plancha', 'core', 'bodyweight'],
+  ['Rueda abdominal', 'core', 'other'],
+  ['Elevación de piernas colgado', 'core', 'bodyweight'],
+  ['Cinta de correr', 'cardio', 'machine'],
+  ['Bicicleta estática', 'cardio', 'machine'],
+  ['Remo ergómetro', 'cardio', 'machine'],
+];
+
+function withCatalog(db: DB): DB {
+  if (!db.tables.exercises?.some((e) => e.user_id == null)) {
+    db.tables.exercises = [
+      ...(db.tables.exercises ?? []),
+      ...EXERCISE_CATALOG.map(([name, muscle_group, equipment], i) => ({ id: `catalog-${i}`, user_id: null, name, muscle_group, equipment })),
+    ];
+  }
+  return db;
+}
+
 let memory: DB = { users: [], tables: {} };
 function load(): DB {
   try {
@@ -41,7 +98,7 @@ function load(): DB {
   } catch {
     /* sin almacenamiento: seguimos en memoria */
   }
-  return memory;
+  return withCatalog(memory);
 }
 function save(db: DB) {
   memory = db;
@@ -168,6 +225,7 @@ class Query implements PromiseLike<{ data: unknown; error: unknown; count: numbe
   lt(c: string, v: string | number) { return this.add(c, (x) => (x as string) < v); }
   lte(c: string, v: string | number) { return this.add(c, (x) => (x as string) <= v); }
   gte(c: string, v: string | number) { return this.add(c, (x) => (x as string) >= v); }
+  is(c: string, v: null) { return this.add(c, (x) => (v === null ? x === null || x === undefined : x === v)); }
   neq(c: string, v: unknown) { return this.add(c, (x) => x !== v); }
   in(c: string, v: unknown[]) { return this.add(c, (x) => v.includes(x)); }
   ilike(c: string, pattern: string) {
@@ -215,7 +273,7 @@ class Query implements PromiseLike<{ data: unknown; error: unknown; count: numbe
         const existing = this.op === 'upsert' ? rows.find((r) => this.visible(r, true) && this.conflict.every((k) => r[k] === (k === 'user_id' ? owner : p[k]))) : undefined;
         if (existing) Object.assign(existing, p);
         else {
-          const row = { id: uuid(), created_at: new Date().toISOString(), ...p, user_id: owner };
+          const row = { id: uuid(), created_at: new Date().toISOString(), ...(DEFAULTS[this.table]?.() ?? {}), ...p, user_id: owner };
           rows.push(row);
           inserted.push(row);
         }
@@ -234,6 +292,10 @@ class Query implements PromiseLike<{ data: unknown; error: unknown; count: numbe
         const ids = new Set(rows.filter((r) => match(r, true)).map((r) => r.id));
         if ((db.tables.recipe_ingredients ?? []).some((i) => ids.has(i.food_id)))
           return { data: null, error: err('update or delete on table "foods" violates foreign key constraint'), count: null };
+      }
+      if (this.table === 'workout_sessions') {
+        const ids = new Set(rows.filter((r) => match(r, true)).map((r) => r.id));
+        db.tables.workout_sets = (db.tables.workout_sets ?? []).filter((x) => !ids.has(x.session_id));
       }
       if (this.table === 'recipes') {
         const ids = new Set(rows.filter((r) => match(r, true)).map((r) => r.id));

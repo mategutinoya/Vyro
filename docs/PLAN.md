@@ -68,10 +68,15 @@ Políticas: CRUD sólo sobre filas propias; catálogos públicos legibles pero n
 - Integridad: no se pueden enlazar alimentos/recetas privados de otro usuario (triggers + pruebas). ✅
 - Pendiente para más adelante: escáner de código de barras (la función `getOpenFoodFactsProduct` ya existe).
 
-**Etapa 3 — Entrenamientos**
-- Rutinas con ejercicios (catálogo + propios), días de la semana.
-- Sesión activa: series, repeticiones, peso, marcar completadas, temporizador de descanso con háptica.
-- Historial de sesiones.
+**Etapa 3 — Entrenamientos ✅ (+ foto con IA en Alimentación)**
+- Rutinas con ejercicios (catálogo + propios), días de la semana, series/reps/descanso y orden. ✅
+- Sesión activa: peso y reps precargados de la última vez, marcar series, añadir series/ejercicios,
+  temporizador de descanso (basado en hora de fin, con háptica), pantalla siempre encendida. ✅
+- Terminar (descarta series sin marcar) / descartar; historial por meses; detalle de cada sesión. ✅
+- Integridad: no se pueden usar rutinas, sesiones ni ejercicios privados de otro usuario; un solo entreno en curso. ✅
+- **Registro de comidas con foto:** la app reduce la foto y la envía a la Edge Function `analyze-meal`, que verifica
+  al usuario, consume su cupo diario (`consume_ai_quota`) y pide a Claude una respuesta en JSON estructurado que se
+  valida antes de devolverla. El usuario revisa y ajusta gramos antes de guardar (`entry_source = 'ai_photo'`). ✅
 
 **Etapa 4 — Progreso y Perfil**
 - Registro de peso y gráfico; estadísticas nutricionales semanales/mensuales; récords y progresión por ejercicio.
@@ -80,4 +85,4 @@ Políticas: CRUD sólo sobre filas propias; catálogos públicos legibles pero n
 **Etapa 5 — Pulido para uso diario**
 - Caché persistente sin conexión, notificaciones de recordatorio, icono y splash propios, build instalable con EAS.
 
-**Después (no ahora):** IA (registro por foto/voz, recomendaciones) y suscripciones (RevenueCat + tabla `subscriptions` ya preparada).
+**Después (no ahora):** más IA (voz, recomendaciones) y suscripciones (RevenueCat + tabla `subscriptions` ya preparada; el cupo de IA ya distingue plan free/pro).

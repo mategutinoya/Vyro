@@ -73,6 +73,7 @@ export default function AmountScreen() {
       grams: Math.round(grams * 10) / 10,
       food_id: isRecipe ? null : foodId,
       recipe_id: isRecipe ? recipeId : null,
+      entry_source: isRecipe ? 'recipe' : 'manual',
       ...macros,
     });
     if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
