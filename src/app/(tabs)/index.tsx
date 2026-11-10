@@ -4,6 +4,7 @@ import { RefreshControl } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { AppText, Card, ErrorCard, Screen, Skeleton } from '@/components/ui';
+import { DemoBadge } from '@/components/DemoBadge';
 import { CaloriesCard } from '@/features/dashboard/components/CaloriesCard';
 import { MacrosCard } from '@/features/dashboard/components/MacrosCard';
 import { WaterCard } from '@/features/dashboard/components/WaterCard';
@@ -49,6 +50,7 @@ export default function HomeScreen() {
   return (
     <Screen refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}>
       <Animated.View entering={enter(0)} style={{ gap: 2, marginBottom: space.sm }}>
+        <DemoBadge />
         <AppText variant="caption" color={colors.textSecondary}>
           {capitalize(formatLongDate(today))}
         </AppText>

@@ -7,10 +7,14 @@ const url = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 const key =
   process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
 
+const demo = process.env.EXPO_PUBLIC_DEMO === '1';
+
 export const env = {
+  /** Modo demo: datos locales en el dispositivo, sin Supabase (sólo para previsualizar). */
+  demo,
   supabaseUrl: url,
   supabaseKey: key,
-  isConfigured: url.startsWith('https://') && key.length > 20,
+  isConfigured: demo || (url.startsWith('https://') && key.length > 20),
   // Protección extra: una clave secreta jamás debe llegar al móvil.
-  looksSecret: key.startsWith('sb_secret_') || key.includes('service_role'),
+  looksSecret: !demo && (key.startsWith('sb_secret_') || key.includes('service_role')),
 };

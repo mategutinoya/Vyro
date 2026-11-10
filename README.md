@@ -8,6 +8,13 @@ React Native + Expo (SDK 58) · TypeScript · Expo Router · Supabase.
 
 ---
 
+## 0. Vista rápida sin configurar nada
+
+- **Enlace de demo:** la app funcionando en el navegador (también desde el móvil). Los datos se guardan sólo en ese navegador.
+- **En tu ordenador**, sin Supabase: `npm install` y después `npm run demo`. Se abre en el navegador en modo demo.
+
+El modo demo (`EXPO_PUBLIC_DEMO=1`) usa un sustituto local de la base de datos (`src/lib/demo/`) que empieza vacío y respeta el mismo aislamiento por usuario. Es sólo para previsualizar; la app real usa Supabase.
+
 ## 1. Lo que necesitas (una sola vez)
 
 | Qué | Para qué | Dónde |

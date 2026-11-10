@@ -1,5 +1,6 @@
 import { View } from 'react-native';
 
+import { DemoBadge } from '@/components/DemoBadge';
 import { AppText, Button, Card, Screen } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { useProfile } from '@/features/profile/api';
@@ -20,6 +21,7 @@ export default function ProfileScreen() {
         <Row label="Objetivo" value={profile?.goal ? GOAL_LABELS[profile.goal].title : '—'} />
         <Row label="Actividad" value={profile?.activity_level ? ACTIVITY_LABELS[profile.activity_level].title : '—'} />
       </Card>
+      <DemoBadge long />
       <AppText variant="caption" color={colors.textTertiary}>La edición del perfil y de los objetivos llega en una próxima etapa.</AppText>
       <Button title="Cerrar sesión" variant="secondary" onPress={() => supabase.auth.signOut()} style={{ marginTop: space.lg }} />
     </Screen>

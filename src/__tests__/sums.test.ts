@@ -1,10 +1,10 @@
 import { describe, expect, it, jest } from '@jest/globals';
 
-jest.mock('@/lib/supabase', () => ({ supabase: {}, requireUserId: jest.fn() }));
-
 import { sumMacros } from '@/features/nutrition/api';
 import { sumWater } from '@/features/water/api';
 import { fmtWater } from '@/lib/format';
+
+jest.mock('@/lib/supabase', () => ({ supabase: {}, requireUserId: jest.fn() }));
 
 describe('totales del día', () => {
   it('suma macros de varios registros', () => {

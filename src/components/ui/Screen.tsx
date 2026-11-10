@@ -1,5 +1,5 @@
 import type { PropsWithChildren, ReactElement } from 'react';
-import { ScrollView, type RefreshControlProps } from 'react-native';
+import { Platform, ScrollView, type RefreshControlProps } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors, space } from '@/theme/tokens';
@@ -15,7 +15,8 @@ export function Screen({ children, refreshControl }: Props) {
     <ScrollView
       style={{ flex: 1, backgroundColor: colors.bg }}
       contentContainerStyle={{
-        paddingTop: insets.top + space.lg,
+        // En web la barra de pestañas flota arriba; dejamos su hueco.
+        paddingTop: insets.top + space.lg + (Platform.OS === 'web' ? 72 : 0),
         paddingBottom: insets.bottom + 120,
         paddingHorizontal: space.lg,
         gap: space.md,

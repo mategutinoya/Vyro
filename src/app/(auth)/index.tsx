@@ -4,6 +4,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText, Button, Card, PressableScale, TextField, type TextFieldRef } from '@/components/ui';
+import { DemoBadge } from '@/components/DemoBadge';
 import { authErrorMessage } from '@/features/auth/AuthProvider';
 import { supabase } from '@/lib/supabase';
 import { colors, space } from '@/theme/tokens';
@@ -53,6 +54,7 @@ export default function AuthScreen() {
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-end', padding: space.xl, paddingTop: insets.top + space.xxxl, paddingBottom: insets.bottom + space.xl, gap: space.xxl }}>
         <Animated.View entering={FadeInDown.duration(500)} style={{ gap: space.sm }}>
+          <DemoBadge long />
           <AppText variant="display">
             Vyro<AppText variant="display" color={colors.accent}>.</AppText>
           </AppText>

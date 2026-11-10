@@ -52,7 +52,8 @@
     "typecheck": "tsc --noEmit",
     "test": "jest",
     "test:db": "bash supabase/tests/run.sh",
-    "check": "tsc --noEmit && expo lint && jest"
+    "check": "tsc --noEmit && expo lint && jest",
+    "demo": "EXPO_PUBLIC_DEMO=1 expo start --web"
   },
   "private": true,
   "jest": {
