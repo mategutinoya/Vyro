@@ -1,56 +1,144 @@
-# Welcome to your Expo app 👋
+# Vyro
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+App móvil de nutrición y entrenamiento para iOS y Android.
+React Native + Expo (SDK 58) · TypeScript · Expo Router · Supabase.
 
-## Get started
+> Estado: **Etapa 1 del MVP** — acceso, onboarding con cálculo de objetivos y pantalla de Inicio funcional.
+> Plan completo en [`docs/PLAN.md`](docs/PLAN.md).
 
-1. Install dependencies
+---
 
-   ```bash
-   npm install
-   ```
+## 1. Lo que necesitas (una sola vez)
 
-2. Start the app
+| Qué | Para qué | Dónde |
+|---|---|---|
+| **Node.js 20 o superior** (LTS) | Ejecutar el proyecto en tu ordenador | nodejs.org |
+| **Cuenta de Supabase** (gratis) | Usuarios y base de datos | supabase.com |
+| **Expo Go** en tu teléfono | Ver la app mientras se desarrolla | App Store / Google Play |
+| Cuenta de Expo (gratis, opcional) | Generar versiones instalables | expo.dev |
 
-   ```bash
-   npx expo start
-   ```
+## 2. Configurar Supabase (≈10 minutos)
 
-In the output, you'll find options to open the app in a
+1. Entra en supabase.com → **New project**. Elige una región cercana (p. ej. *West EU*) y guarda la contraseña de la base de datos en un lugar seguro.
+2. **Crear las tablas:** menú lateral → **SQL Editor** → **New query**. Abre el archivo
+   `supabase/migrations/20261110000000_init.sql` de este proyecto, copia **todo** su contenido, pégalo y pulsa **Run**.
+   Debe terminar con “Success”.
+3. **Acceso por correo:** menú → **Authentication → Sign In / Providers → Email**.
+   - Para uso personal puedes **desactivar “Confirm email”** y así entras directamente al registrarte.
+   - Si lo dejas activado, recibirás un correo de confirmación: púlsalo y luego inicia sesión en la app.
+4. **Copiar las claves públicas:** menú → **Project Settings → API Keys** (y **Data API** para la URL):
+   - **Project URL** → `https://xxxx.supabase.co`
+   - **Publishable key** (`sb_publishable_…`). En proyectos antiguos se llama **anon public**; también sirve.
+   - ⚠️ **Nunca** copies la *secret key* ni la *service_role key* en la app. La app se niega a arrancar si detecta una.
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **src/app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## 3. Arrancar el proyecto en tu ordenador
 
 ```bash
-npm run reset-project
+git clone https://github.com/mategutinoya/Vyro.git
 ```
 
-This command will move the starter code to the **example** directory and create a blank **src/app** directory where you can start developing.
+```bash
+cd Vyro
+```
 
-### Other setup steps
+```bash
+npm install
+```
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+Crea el archivo `.env` copiando la plantilla y rellena tus dos valores:
 
-## Learn more
+```bash
+cp .env.example .env
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+```
+EXPO_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
+EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_…
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+Arranca el servidor de desarrollo:
 
-## Join the community
+```bash
+npx expo start
+```
 
-Join our community of developers creating universal apps.
+## 4. Ver la app en tu teléfono con Expo Go
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+1. Instala **Expo Go** (App Store o Google Play).
+2. Teléfono y ordenador **en la misma red Wi‑Fi**.
+3. Con `npx expo start` en marcha aparece un **código QR** en la terminal:
+   - **iPhone:** abre la app **Cámara** y apunta al QR.
+   - **Android:** abre **Expo Go** → *Scan QR code*.
+4. Cada vez que se guarda un cambio en el código, la app se recarga sola.
+
+**Si no conecta** (redes de empresa/universidad, VPN…): para el servidor con `Ctrl + C` y usa un túnel:
+
+```bash
+npx expo start --tunnel
+```
+
+Si cambias el archivo `.env`, reinicia limpiando la caché:
+
+```bash
+npx expo start -c
+```
+
+> Todas las librerías usadas hasta ahora están incluidas en Expo Go, así que **no necesitas compilar nada** para probar.
+
+## 5. Obtener una versión instalable (cuando quieras)
+
+Expo Go es ideal para desarrollar. Para tener la app con su propio icono en el teléfono usa **EAS Build** (compila en la nube, no necesitas Mac ni Android Studio):
+
+```bash
+npm install -g eas-cli
+```
+
+```bash
+eas login
+```
+
+Android — genera un `.apk` que instalas directamente desde el enlace que te da EAS:
+
+```bash
+eas build --profile preview --platform android
+```
+
+iPhone — requiere una cuenta de **Apple Developer** (99 USD/año). Registra tu teléfono y compila:
+
+```bash
+eas device:create
+```
+
+```bash
+eas build --profile preview --platform ios
+```
+
+Las variables del `.env` también deben existir en EAS (Expo → tu proyecto → **Environment variables**) para que la versión compilada se conecte a Supabase.
+
+## 6. Comprobaciones de calidad
+
+```bash
+npm run check      # TypeScript + lint + pruebas unitarias
+```
+
+```bash
+npm run test:db    # Migración + pruebas de seguridad RLS (requiere PostgreSQL local)
+```
+
+## Estructura
+
+```
+src/
+  app/                  Rutas (Expo Router): cada archivo es una pantalla
+    (auth)/             Acceso y registro
+    (tabs)/             Inicio · Comidas · Entreno · Progreso · Perfil
+    onboarding.tsx      Configuración inicial en 3 pasos
+  features/             Lógica por dominio (datos + reglas)
+    auth/ profile/ nutrition/ water/ workouts/ progress/ dashboard/
+  components/ui/        Sistema de componentes (tarjetas, botones, anillos…)
+  theme/tokens.ts       Colores, tipografía, espaciado
+  lib/                  Cliente Supabase, fechas, formato
+supabase/
+  migrations/           Esquema SQL + políticas RLS
+  tests/                Pruebas de aislamiento entre usuarios
+```
