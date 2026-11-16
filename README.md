@@ -1,74 +1,61 @@
-# Vyro
+# Vyro · Nutricionista personal con IA
 
-App móvil de nutrición y entrenamiento para iOS y Android.
-React Native + Expo (SDK 58) · TypeScript · Expo Router · Supabase.
+Aplicación web (móvil primero) que funciona como un nutricionista virtual: crea planes de comida
+con alimentos fáciles de conseguir en Bolivia, registra lo que comes de verdad (sin culpas), entiende
+mensajes en lenguaje natural y sigue tu evolución semana a semana.
 
-> Estado: **Etapa 3 del MVP** — Inicio, Alimentación (con registro por foto e IA) y Entrenamientos.
-> Plan completo en [`docs/PLAN.md`](docs/PLAN.md).
+> Vyro ofrece orientación nutricional general. No da diagnósticos ni sustituye a un nutricionista o médico titulado.
+
+**Tecnología:** Next.js 16 (App Router) + TypeScript · Tailwind CSS 4 · Supabase (autenticación y base de
+datos con RLS) · API de Claude (servidor) · Recharts.
+La arquitectura y la base de datos están explicadas en [`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md).
 
 ---
 
-## 0. Vista rápida sin configurar nada
+## Qué incluye esta primera versión
 
-- **Enlace de demo:** la app funcionando en el navegador (también desde el móvil). Los datos se guardan sólo en ese navegador.
-- **En tu ordenador**, sin Supabase: `npm install` y después `npm run demo`. Se abre en el navegador en modo demo.
+| Pantalla | Qué puedes hacer |
+|---|---|
+| **Inicio** | Calorías y macros del día, tu próxima comida, aviso del control semanal, resumen de peso y constancia. |
+| **Mi plan de hoy** | Generar el plan; ver ingredientes, alternativas y preparación; “Lo comí”, “Comí otra cosa” (estimación con IA), “Cambiar plato”, editar ingredientes, omitir, deshacer, favoritos; aligerar el resto del día tras una comida abundante; historial de cambios. |
+| **Nutricionista IA** | Chat que entiende “Hoy pesé 75 kg”, “Comí una hamburguesa en vez de mi cena”, “No tengo pollo”, “Quiero algo diferente mañana”, “Entrené dos días”… y actualiza tus datos con operaciones validadas. Muestra bajo cada respuesta qué cambió. |
+| **Calendario** | Semana completa con el estado de cada comida (cumplida, reemplazada, omitida, pendiente), generar los días que faltan y entrar a cualquier día. |
+| **Lista de compras** | Ingredientes de la semana sumados y agrupados por sección del mercado. |
+| **Mi progreso** | Control semanal (peso, cintura, % de grasa **con su origen**, entrenos), gráficas, explicación sencilla y revisión con IA con ajustes moderados. |
+| **Mi perfil** | Editar todos tus datos, ver tus objetivos, lo que la IA recuerda de ti (y borrarlo), favoritos, **descargar tus datos** y **eliminar tu cuenta**. |
 
-El modo demo (`EXPO_PUBLIC_DEMO=1`) usa un sustituto local de la base de datos (`src/lib/demo/`) que empieza vacío y respeta el mismo aislamiento por usuario. Es sólo para previsualizar; la app real usa Supabase.
+Seguridad para menores: si la persona tiene menos de 18 años, no se ofrecen objetivos de pérdida de
+peso, no se pide % de grasa, no hay déficit calórico y se recomienda acompañamiento profesional.
 
-## 1. Lo que necesitas (una sola vez)
+---
 
-| Qué | Para qué | Dónde |
-|---|---|---|
-| **Node.js 20 o superior** (LTS) | Ejecutar el proyecto en tu ordenador | nodejs.org |
-| **Cuenta de Supabase** (gratis) | Usuarios y base de datos | supabase.com |
-| **Expo Go** en tu teléfono | Ver la app mientras se desarrolla | App Store / Google Play |
-| Cuenta de Expo (gratis, opcional) | Generar versiones instalables | expo.dev |
+## 1. Lo que necesitas
+
+| Qué | Para qué |
+|---|---|
+| **Node.js 20.9 o superior** | Ejecutar el proyecto (nodejs.org, versión LTS). |
+| **Cuenta de Supabase** (gratis) | Usuarios y base de datos (supabase.com). |
+| **Clave de la API de Claude** | La IA (console.anthropic.com → API Keys; requiere saldo en *Billing*). |
+| Cuenta de Vercel (opcional, gratis) | Publicar la app con un enlace para usarla desde el móvil. |
 
 ## 2. Configurar Supabase (≈10 minutos)
 
-1. Entra en supabase.com → **New project**. Elige una región cercana (p. ej. *West EU*) y guarda la contraseña de la base de datos en un lugar seguro.
-2. **Crear las tablas:** menú lateral → **SQL Editor** → **New query**. Ejecuta **en orden** cada archivo de
-   `supabase/migrations/` (copia **todo** su contenido, pégalo y pulsa **Run**; debe terminar con “Success”):
-   1. `20261110000000_init.sql` — tablas y seguridad (Etapa 1).
-   2. `20261111000000_ownership_checks.sql` — protección extra para recetas y diario (Etapa 2).
-   3. `20261112000000_workouts_and_ai.sql` — entrenamientos y límite diario de la IA (Etapa 3).
+Recomendado: **crea un proyecto nuevo** para esta versión web (la app móvil anterior usaba otras tablas).
 
-   Si ya ejecutaste el primero, ejecuta sólo los nuevos.
-3. **Acceso por correo:** menú → **Authentication → Sign In / Providers → Email**.
-   - Para uso personal puedes **desactivar “Confirm email”** y así entras directamente al registrarte.
-   - Si lo dejas activado, recibirás un correo de confirmación: púlsalo y luego inicia sesión en la app.
-4. **Copiar las claves públicas:** menú → **Project Settings → API Keys** (y **Data API** para la URL):
-   - **Project URL** → `https://xxxx.supabase.co`
-   - **Publishable key** (`sb_publishable_…`). En proyectos antiguos se llama **anon public**; también sirve.
-   - ⚠️ **Nunca** copies la *secret key* ni la *service_role key* en la app. La app se niega a arrancar si detecta una.
+1. **New project** → elige una región cercana (p. ej. São Paulo) y guarda la contraseña.
+2. **Crear las tablas:** menú **SQL Editor → New query** → copia **todo** el archivo
+   `supabase/migrations/20261116000000_vyro_nutricion.sql`, pégalo y pulsa **Run** (debe decir *Success*).
+3. **Correo de confirmación:** **Authentication → Sign In / Providers → Email**.
+   - Para probar tú solo, puedes desactivar **Confirm email** y entrar directamente.
+   - Si lo dejas activo, configura **Authentication → URL Configuration**:
+     *Site URL* = la dirección de tu app (p. ej. `http://localhost:3000` o tu enlace de Vercel) y añade
+     `…/auth/callback` en *Redirect URLs*.
+4. **Claves públicas:** **Project Settings → API Keys** (y **Data API** para la URL):
+   - *Project URL* → `https://xxxx.supabase.co`
+   - *Publishable key* (`sb_publishable_…`; en proyectos antiguos se llama *anon public*).
+   - ⚠️ **Nunca** uses la *secret key* / *service_role* en esta app.
 
-## 2b. Activar el registro de comidas con foto (IA)
-
-La foto se analiza en un servidor seguro (una *Edge Function* de Supabase). La clave de la IA vive **sólo** allí:
-nunca dentro de la app ni en el archivo `.env`.
-
-1. **Clave de Anthropic:** entra en console.anthropic.com → **API Keys** → *Create Key*. Necesitas añadir saldo en
-   **Billing**. Coste orientativo: unos 0,03–0,06 USD por foto (estimación, depende del tamaño de la respuesta).
-2. **Guardar la clave en Supabase:** panel de tu proyecto → **Edge Functions** → **Secrets** (o *Manage secrets*) →
-   añade `ANTHROPIC_API_KEY` con el valor de tu clave. No la pegues en ningún otro sitio.
-3. **Publicar la función** desde la carpeta del proyecto (te pedirá iniciar sesión en Supabase la primera vez).
-   `TU_REF` es el identificador del proyecto: lo ves en la URL del panel (`supabase.com/dashboard/project/TU_REF`).
-
-```bash
-npx supabase login
-```
-
-```bash
-npx supabase functions deploy analyze-meal --project-ref TU_REF
-```
-
-4. Prueba en la app: **Comidas → ◉** (o “Registrar con foto” al añadir). Cada usuario tiene **15 análisis al día**
-   (100 con el futuro plan Pro); el límite lo aplica la base de datos.
-
-Si al analizar ves “Inicia sesión para usar esta función” aunque hayas iniciado sesión, vuelve a publicarla con
-`--no-verify-jwt` al final del comando: la propia función sigue comprobando quién eres.
-
-## 3. Arrancar el proyecto en tu ordenador
+## 3. Ejecutar en tu ordenador
 
 ```bash
 git clone https://github.com/mategutinoya/Vyro.git
@@ -82,100 +69,82 @@ cd Vyro
 npm install
 ```
 
-Crea el archivo `.env` copiando la plantilla y rellena tus dos valores:
+Crea `.env.local` a partir de la plantilla y rellena tus tres valores:
 
 ```bash
-cp .env.example .env
+cp .env.example .env.local
 ```
 
 ```
-EXPO_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
-EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_…
+NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_…
+ANTHROPIC_API_KEY=sk-ant-…
 ```
 
-Arranca el servidor de desarrollo:
+La clave de Claude **no** lleva el prefijo `NEXT_PUBLIC_`: así nunca llega al navegador.
+
+Arranca la app:
 
 ```bash
-npx expo start
+npm run dev
 ```
 
-## 4. Ver la app en tu teléfono con Expo Go
+Abre **http://localhost:3000**, crea tu cuenta, completa el perfil y pulsa **Generar el plan del día**.
 
-1. Instala **Expo Go** (App Store o Google Play).
-2. Teléfono y ordenador **en la misma red Wi‑Fi**.
-3. Con `npx expo start` en marcha aparece un **código QR** en la terminal:
-   - **iPhone:** abre la app **Cámara** y apunta al QR.
-   - **Android:** abre **Expo Go** → *Scan QR code*.
-4. Cada vez que se guarda un cambio en el código, la app se recarga sola.
+**Desde tu móvil (misma Wi‑Fi):** la terminal muestra una línea *Network: http://192.168.x.x:3000*;
+ábrela en el navegador del móvil. Si activaste la confirmación por correo, añade esa dirección en las
+*Redirect URLs* de Supabase.
 
-**Si no conecta** (redes de empresa/universidad, VPN…): para el servidor con `Ctrl + C` y usa un túnel:
+## 4. Publicarla para usarla desde el móvil (recomendado)
 
-```bash
-npx expo start --tunnel
-```
+1. Sube el proyecto a GitHub (ya está en este repositorio).
+2. En vercel.com → **Add New → Project** → importa el repositorio.
+3. En **Environment Variables** añade las tres variables de `.env.local`.
+4. **Deploy**. Abre el enlace en el móvil y usa *Compartir → Añadir a pantalla de inicio* para tenerla como app.
+5. En Supabase → **URL Configuration**, pon ese enlace como *Site URL* y `https://tu-app.vercel.app/auth/callback` en *Redirect URLs*.
 
-Si cambias el archivo `.env`, reinicia limpiando la caché:
+Generar una semana entera hace varias peticiones a la IA y puede tardar 1–2 minutos.
 
-```bash
-npx expo start -c
-```
+## 5. Costes y límites de la IA
 
-> Todas las librerías usadas hasta ahora están incluidas en Expo Go, así que **no necesitas compilar nada** para probar.
+- Modelo: Claude Opus 5.5. Cada usuario tiene un **cupo diario** controlado por la base de datos:
+  80 mensajes de chat, 12 generaciones de plan y 6 revisiones de progreso. Se cambia en la función
+  `consume_ai_quota` de la migración.
+- Coste orientativo: un mensaje de chat ronda 0,01–0,04 USD; un día de plan, 0,03–0,08 USD
+  (estimaciones; dependen de la longitud de las respuestas).
 
-## 5. Obtener una versión instalable (cuando quieras)
-
-Expo Go es ideal para desarrollar. Para tener la app con su propio icono en el teléfono usa **EAS Build** (compila en la nube, no necesitas Mac ni Android Studio):
-
-```bash
-npm install -g eas-cli
-```
+## 6. Pruebas
 
 ```bash
-eas login
-```
-
-Android — genera un `.apk` que instalas directamente desde el enlace que te da EAS:
-
-```bash
-eas build --profile preview --platform android
-```
-
-iPhone — requiere una cuenta de **Apple Developer** (99 USD/año). Registra tu teléfono y compila:
-
-```bash
-eas device:create
+npm run check      # TypeScript + lint + 28 pruebas unitarias (lógica, operaciones y chat con IA simulada)
 ```
 
 ```bash
-eas build --profile preview --platform ios
+npm run test:db    # Migración + pruebas de seguridad RLS en PostgreSQL local (usuario postgres)
 ```
 
-Las variables del `.env` también deben existir en EAS (Expo → tu proyecto → **Environment variables**) para que la versión compilada se conecte a Supabase.
-
-## 6. Comprobaciones de calidad
-
-```bash
-npm run check      # TypeScript + lint + pruebas unitarias
-```
-
-```bash
-npm run test:db    # Migración + pruebas de seguridad RLS (requiere PostgreSQL local)
-```
+Prueba de punta a punta (opcional, avanzado): `e2e/` contiene un servidor que imita Supabase sobre
+PostgreSQL local, otro que imita la API de Claude y un recorrido de 19 pasos con Playwright
+(registro → plan → registros → chat → calendario → compras → progreso → perfil → eliminar cuenta).
+Ver cabecera de cada archivo para ejecutarlo.
 
 ## Estructura
 
 ```
 src/
-  app/                  Rutas (Expo Router): cada archivo es una pantalla
-    (auth)/             Acceso y registro
-    (tabs)/             Inicio · Comidas · Entreno · Progreso · Perfil
-    onboarding.tsx      Configuración inicial en 3 pasos
-  features/             Lógica por dominio (datos + reglas)
-    auth/ profile/ nutrition/ water/ workouts/ progress/ dashboard/
-  components/ui/        Sistema de componentes (tarjetas, botones, anillos…)
-  theme/tokens.ts       Colores, tipografía, espaciado
-  lib/                  Cliente Supabase, fechas, formato
+  app/                    Pantallas (App Router) y rutas de API
+    (app)/                Inicio, hoy, chat, calendario, compras, progreso, perfil
+    api/                  chat · plan · swap · adjust · estimate · review · export
+    actions.ts            Server Actions (botones)
+  components/             Interfaz (día, chat, progreso, perfil, UI base)
+  lib/
+    domain/               Lógica pura y probada: objetivos, seguridad, fechas, compras, progreso, esquemas
+    server/ops.ts         ÚNICA vía de escritura: operaciones validadas + historial de cambios
+    server/data.ts        Lecturas con la sesión del usuario
+    ai/                   Claude: chat con herramientas, planificador, estimaciones, revisión
+  proxy.ts                Refresco de sesión y protección de rutas
 supabase/
-  migrations/           Esquema SQL + políticas RLS
-  tests/                Pruebas de aislamiento entre usuarios
+  migrations/             Esquema SQL + RLS + funciones
+  tests/                  Pruebas de seguridad de la base de datos
+e2e/                      Entorno de pruebas de punta a punta
 ```

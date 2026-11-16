@@ -1,163 +1,115 @@
--- Pruebas de aislamiento RLS. Cada bloque falla con una excepción si algo va mal.
+-- Pruebas de seguridad y reglas de datos. Cada bloque lanza una excepción si algo falla.
 \set ON_ERROR_STOP on
 
 insert into auth.users (id, email) values
   ('00000000-0000-0000-0000-00000000000a', 'a@test.local'),
   ('00000000-0000-0000-0000-00000000000b', 'b@test.local');
 
--- El trigger crea los perfiles
 do $$ begin
-  if (select count(*) from public.profiles) <> 2 then raise exception 'perfiles no creados por trigger'; end if;
+  if (select count(*) from public.user_profiles) <> 2 then raise exception 'perfiles no creados por trigger'; end if;
 end $$;
 
--- Usuario A escribe datos
+-- ---------------------------------------------------------------- Usuario A
 set role authenticated;
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000a', false);
 
-update public.profiles set display_name = 'A', goal = 'lose' where id = auth.uid();
-insert into public.water_logs (log_date, amount_ml) values (current_date, 250);
-insert into public.foods (name, kcal_per_100g, protein_per_100g) values ('Alimento A', 100, 10);
-insert into public.food_logs (log_date, meal, name, grams, kcal) values (current_date, 'lunch', 'Alimento A', 100, 100);
-insert into public.nutrition_targets (calories, protein_g, carbs_g, fat_g, water_ml) values (2000, 150, 200, 60, 2500);
-insert into public.routines (name, weekdays) values ('Empuje', '{1,4}');
+update public.user_profiles set display_name = 'A', goal = 'lose_fat' where id = auth.uid();
+insert into public.body_measurements (measured_on, weight_kg) values (current_date, 80);
+insert into public.meal_plans (plan_date) values (current_date);
+insert into public.planned_meals (plan_id, plan_date, slot, name)
+  select id, plan_date, 'dinner', 'Pollo con arroz' from public.meal_plans;
+insert into public.meal_logs (log_date, slot, description) values (current_date, 'dinner', 'Hamburguesa con papas');
+insert into public.chat_messages (role, content) values ('user', 'Hoy comí una hamburguesa');
+insert into public.user_memories (kind, content) values ('likes', 'Le gusta el api morado');
+insert into public.meal_change_history (happened_on, entity, action, summary, actor)
+  values (current_date, 'planned_meal', 'replaced', 'Cena reemplazada', 'assistant');
 
--- A no puede insertar a nombre de B
+-- % de grasa sin origen: rechazado (no fingimos precisión)
 do $$ begin
   begin
-    insert into public.water_logs (user_id, log_date, amount_ml)
-      values ('00000000-0000-0000-0000-00000000000b', current_date, 100);
-    raise exception 'FALLO: A insertó datos de B';
-  exception when insufficient_privilege then null; -- esperado
+    insert into public.body_measurements (measured_on, body_fat_pct) values (current_date - 1, 20);
+    raise exception 'FALLO: aceptó %% de grasa sin origen';
+  exception when check_violation then null;
   end;
 end $$;
 
--- A no puede escribir en el catálogo público ni en suscripciones
+-- El historial no se puede modificar ni borrar
+update public.meal_change_history set summary = 'manipulado';
+delete from public.meal_change_history;
 do $$ begin
-  begin
-    insert into public.exercises (user_id, name, muscle_group) values (null, 'X', 'other');
-    raise exception 'FALLO: A escribió en catálogo público';
-  exception when insufficient_privilege then null;
-  end;
-  begin
-    insert into public.subscriptions (user_id, plan) values (auth.uid(), 'pro');
-    raise exception 'FALLO: A se otorgó suscripción';
-  exception when insufficient_privilege then null;
-  end;
+  if (select summary from public.meal_change_history limit 1) <> 'Cena reemplazada' then
+    raise exception 'FALLO: el historial se pudo modificar';
+  end if;
 end $$;
 
--- Usuario B no ve nada de A
+-- Cupo de IA: 12 planes al día
+do $$ declare i int; r int; begin
+  for i in 1..12 loop r := public.consume_ai_quota('plan'); end loop;
+  if r <> 0 then raise exception 'cupo incorrecto %', r; end if;
+  if public.consume_ai_quota('plan') <> -1 then raise exception 'FALLO: superó el cupo'; end if;
+end $$;
+
+-- ---------------------------------------------------------------- Usuario B
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000b', false);
-do $$ begin
-  if (select count(*) from public.profiles) <> 1 then raise exception 'B ve perfiles ajenos'; end if;
-  if (select count(*) from public.water_logs) <> 0 then raise exception 'B ve agua de A'; end if;
-  if (select count(*) from public.food_logs) <> 0 then raise exception 'B ve comidas de A'; end if;
-  if (select count(*) from public.foods) <> 0 then raise exception 'B ve alimentos privados de A'; end if;
-  if (select count(*) from public.nutrition_targets) <> 0 then raise exception 'B ve objetivos de A'; end if;
-  if (select count(*) from public.routines) <> 0 then raise exception 'B ve rutinas de A'; end if;
-  if (select count(*) from public.exercises) < 30 then raise exception 'B no ve el catálogo público'; end if;
-end $$;
-
--- B no puede modificar ni borrar datos de A (0 filas afectadas)
-update public.profiles set display_name = 'hack' where id = '00000000-0000-0000-0000-00000000000a';
-delete from public.water_logs;
-
--- Etapa 2: B no puede enlazar el alimento privado de A en su receta ni en su diario
 do $$
-declare a_food uuid; b_recipe uuid;
+declare a_plan uuid; a_meal uuid;
 begin
+  if (select count(*) from public.user_profiles) <> 1 then raise exception 'B ve perfiles ajenos'; end if;
+  if exists (select 1 from public.body_measurements) then raise exception 'B ve pesos de A'; end if;
+  if exists (select 1 from public.meal_logs) then raise exception 'B ve comidas de A'; end if;
+  if exists (select 1 from public.planned_meals) then raise exception 'B ve el plan de A'; end if;
+  if exists (select 1 from public.chat_messages) then raise exception 'B ve el chat de A'; end if;
+  if exists (select 1 from public.user_memories) then raise exception 'B ve la memoria de A'; end if;
+  if exists (select 1 from public.meal_change_history) then raise exception 'B ve el historial de A'; end if;
+
+  -- B no puede colgar comidas del plan de A aunque conozca los ids
   reset role;
-  select id into a_food from public.foods where name = 'Alimento A';
-  set role authenticated;
-  insert into public.recipes (name) values ('Receta B') returning id into b_recipe;
-  begin
-    insert into public.recipe_ingredients (recipe_id, food_id, grams) values (b_recipe, a_food, 100);
-    raise exception 'FALLO: B usó un alimento privado de A en su receta';
-  exception when insufficient_privilege then null;
-  end;
-  begin
-    insert into public.food_logs (log_date, meal, food_id, name, grams, kcal) values (current_date, 'lunch', a_food, 'x', 100, 100);
-    raise exception 'FALLO: B registró un alimento privado de A';
-  exception when insufficient_privilege then null;
-  end;
-  -- Con un alimento propio sí funciona
-  insert into public.foods (name, kcal_per_100g) values ('Alimento B', 50);
-  insert into public.recipe_ingredients (recipe_id, food_id, grams)
-    select b_recipe, id, 100 from public.foods where name = 'Alimento B';
-  -- Borrar la receta borra sus ingredientes
-  delete from public.recipes where id = b_recipe;
-  if exists (select 1 from public.recipe_ingredients) then raise exception 'ingredientes huérfanos'; end if;
-end $$;
-
--- Etapa 3: entrenamientos e IA
-do $$
-declare a_routine uuid; b_session uuid; ex uuid; left_ integer; i integer;
-begin
-  reset role;
-  select id into a_routine from public.routines where name = 'Empuje';
-  select id into ex from public.exercises where user_id is null limit 1;
-  set role authenticated;  -- sigue siendo B
-
-  -- B no puede iniciar sesión con la rutina de A ni añadirla a la suya
-  begin
-    insert into public.workout_sessions (routine_id, name) values (a_routine, 'x');
-    raise exception 'FALLO: B usó la rutina de A';
-  exception when insufficient_privilege then null;
-  end;
-
-  -- B sí puede entrenar con el catálogo público
-  insert into public.workout_sessions (name) values ('Libre') returning id into b_session;
-  insert into public.workout_sets (session_id, exercise_id, set_index, reps, weight_kg) values (b_session, ex, 0, 10, 60);
-
-  -- Sólo un entrenamiento en curso a la vez
-  begin
-    insert into public.workout_sessions (name) values ('Otra');
-    raise exception 'FALLO: dos entrenamientos en curso';
-  exception when unique_violation then null;
-  end;
-
-  -- B no puede añadir series a una sesión ajena aunque conozca su id
-  reset role;
-  insert into public.workout_sessions (user_id, name)
-    values ('00000000-0000-0000-0000-00000000000a', 'Sesión A') returning id into a_routine;
+  select id into a_plan from public.meal_plans limit 1;
+  select id into a_meal from public.planned_meals limit 1;
   set role authenticated;
   begin
-    insert into public.workout_sets (session_id, exercise_id, set_index) values (a_routine, ex, 0);
-    raise exception 'FALLO: B añadió series a la sesión de A';
+    insert into public.planned_meals (plan_id, plan_date, slot, name) values (a_plan, current_date, 'lunch', 'x');
+    raise exception 'FALLO: B añadió comidas al plan de A';
   exception when insufficient_privilege then null;
   end;
-
-  -- Cupo de IA: 15 usos diarios en el plan gratuito
-  for i in 1..15 loop
-    left_ := public.consume_ai_quota();
-  end loop;
-  if left_ <> 0 then raise exception 'cupo IA incorrecto: %', left_; end if;
-  if public.consume_ai_quota() <> -1 then raise exception 'FALLO: superó el cupo de IA'; end if;
-
-  -- Nadie puede escribir su propio consumo directamente
   begin
-    update public.ai_usage set count = 0;
-    if exists (select 1 from public.ai_usage where count = 0) then raise exception 'FALLO: B reinició su cupo'; end if;
+    insert into public.meal_logs (log_date, slot, description, planned_meal_id) values (current_date, 'dinner', 'x', a_meal);
+    raise exception 'FALLO: B enlazó su registro a la comida de A';
+  exception when insufficient_privilege then null;
+  end;
+  -- B no puede escribir a nombre de A
+  begin
+    insert into public.chat_messages (user_id, role, content) values ('00000000-0000-0000-0000-00000000000a', 'user', 'x');
+    raise exception 'FALLO: B escribió en el chat de A';
   exception when insufficient_privilege then null;
   end;
 end $$;
 
--- Usuario anónimo no ve nada
+-- B no puede borrar datos de A (0 filas afectadas)
+delete from public.meal_logs;
+update public.user_profiles set display_name = 'hack' where id = '00000000-0000-0000-0000-00000000000a';
+
+-- B elimina SU cuenta: desaparecen sus datos, no los de A
+insert into public.body_measurements (measured_on, weight_kg) values (current_date, 70);
+select public.delete_my_account();
+
 reset role;
+do $$ begin
+  if exists (select 1 from auth.users where id = '00000000-0000-0000-0000-00000000000b') then raise exception 'FALLO: no se borró la cuenta de B'; end if;
+  if exists (select 1 from public.body_measurements where user_id = '00000000-0000-0000-0000-00000000000b') then raise exception 'FALLO: quedaron datos de B'; end if;
+  if (select display_name from public.user_profiles where id = '00000000-0000-0000-0000-00000000000a') <> 'A' then raise exception 'FALLO: B modificó a A'; end if;
+  if (select count(*) from public.meal_logs) <> 1 then raise exception 'FALLO: B borró comidas de A'; end if;
+end $$;
+
+-- Anónimo: sin acceso
 set role anon;
 do $$ begin
   begin
-    perform count(*) from public.profiles;
-    raise exception 'FALLO: anon pudo leer perfiles';
+    perform count(*) from public.user_profiles;
+    raise exception 'FALLO: anon leyó perfiles';
   exception when insufficient_privilege then null;
   end;
 end $$;
-
 reset role;
-do $$ begin
-  if (select display_name from public.profiles where id = '00000000-0000-0000-0000-00000000000a') <> 'A' then
-    raise exception 'B modificó el perfil de A';
-  end if;
-  if (select count(*) from public.water_logs) <> 1 then raise exception 'B borró agua de A'; end if;
-end $$;
 
 select 'RLS OK' as resultado;
