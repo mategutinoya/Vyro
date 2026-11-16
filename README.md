@@ -29,7 +29,34 @@ peso, no se pide % de grasa, no hay déficit calórico y se recomienda acompaña
 
 ---
 
-## 1. Lo que necesitas
+## La forma fácil: publicarla en 3 pasos (≈10 minutos, sin instalar nada)
+
+**Paso 1 · Consigue tu clave de la IA.** Entra en [console.anthropic.com](https://console.anthropic.com/settings/keys),
+crea una cuenta, añade saldo en *Billing* (con 5 USD alcanza para empezar) y pulsa **Create Key**. Copia la clave
+(empieza por `sk-ant-`).
+
+**Paso 2 · Pulsa este botón** y sigue lo que te pide la pantalla:
+
+[![Publicar en Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fmategutinoya%2FVyro&project-name=vyro&repository-name=vyro&env=ANTHROPIC_API_KEY&envDescription=Clave%20de%20la%20API%20de%20Claude%20%28empieza%20por%20sk-ant-%29&envLink=https%3A%2F%2Fconsole.anthropic.com%2Fsettings%2Fkeys&products=%5B%7B%22type%22%3A%22integration%22%2C%22protocol%22%3A%22storage%22%2C%22productSlug%22%3A%22supabase%22%2C%22integrationSlug%22%3A%22supabase%22%7D%5D)
+
+1. Entra con tu cuenta de **GitHub**.
+2. Cuando aparezca **Supabase**, pulsa *Add* / *Create*: se crea tu base de datos gratis y se conecta sola.
+3. Pega tu clave en **ANTHROPIC_API_KEY**.
+4. Pulsa **Deploy** y espera 2–3 minutos. Las tablas se instalan solas.
+
+**Paso 3 · Ábrela en tu móvil.** Vercel te da un enlace (`https://vyro-….vercel.app`). Ábrelo en el navegador del
+teléfono y elige **Compartir → Añadir a pantalla de inicio**: queda como una app. Crea tu cuenta y listo
+(no hace falta confirmar el correo).
+
+> Si el botón no carga: entra en vercel.com → **Add New → Project** → importa `Vyro` → en **Storage** conecta
+> **Supabase** → en **Environment Variables** añade `ANTHROPIC_API_KEY` → **Deploy**.
+> Si al entrar la app dice que faltan las tablas, ella misma te muestra cómo instalarlas en un minuto.
+
+---
+
+## Para desarrolladores
+
+### 1. Lo que necesitas
 
 | Qué | Para qué |
 |---|---|
@@ -38,14 +65,14 @@ peso, no se pide % de grasa, no hay déficit calórico y se recomienda acompaña
 | **Clave de la API de Claude** | La IA (console.anthropic.com → API Keys; requiere saldo en *Billing*). |
 | Cuenta de Vercel (opcional, gratis) | Publicar la app con un enlace para usarla desde el móvil. |
 
-## 2. Configurar Supabase (≈10 minutos)
+### 2. Configurar Supabase (≈10 minutos)
 
 Recomendado: **crea un proyecto nuevo** para esta versión web (la app móvil anterior usaba otras tablas).
 
 1. **New project** → elige una región cercana (p. ej. São Paulo) y guarda la contraseña.
 2. **Crear las tablas:** menú **SQL Editor → New query** → copia **todo** el archivo
    `supabase/migrations/20261116000000_vyro_nutricion.sql`, pégalo y pulsa **Run** (debe decir *Success*).
-3. **Correo de confirmación:** **Authentication → Sign In / Providers → Email**.
+3. **Correo de confirmación** (sólo si no usas la clave de servicio; con ella las cuentas se crean ya confirmadas): **Authentication → Sign In / Providers → Email**.
    - Para probar tú solo, puedes desactivar **Confirm email** y entrar directamente.
    - Si lo dejas activo, configura **Authentication → URL Configuration**:
      *Site URL* = la dirección de tu app (p. ej. `http://localhost:3000` o tu enlace de Vercel) y añade
@@ -55,7 +82,7 @@ Recomendado: **crea un proyecto nuevo** para esta versión web (la app móvil an
    - *Publishable key* (`sb_publishable_…`; en proyectos antiguos se llama *anon public*).
    - ⚠️ **Nunca** uses la *secret key* / *service_role* en esta app.
 
-## 3. Ejecutar en tu ordenador
+### 3. Ejecutar en tu ordenador
 
 ```bash
 git clone https://github.com/mategutinoya/Vyro.git
@@ -95,7 +122,7 @@ Abre **http://localhost:3000**, crea tu cuenta, completa el perfil y pulsa **Gen
 ábrela en el navegador del móvil. Si activaste la confirmación por correo, añade esa dirección en las
 *Redirect URLs* de Supabase.
 
-## 4. Publicarla para usarla desde el móvil (recomendado)
+### 4. Publicarla para usarla desde el móvil (recomendado)
 
 1. Sube el proyecto a GitHub (ya está en este repositorio).
 2. En vercel.com → **Add New → Project** → importa el repositorio.
@@ -105,7 +132,7 @@ Abre **http://localhost:3000**, crea tu cuenta, completa el perfil y pulsa **Gen
 
 Generar una semana entera hace varias peticiones a la IA y puede tardar 1–2 minutos.
 
-## 5. Costes y límites de la IA
+### 5. Costes y límites de la IA
 
 - Modelo: Claude Opus 5.5. Cada usuario tiene un **cupo diario** controlado por la base de datos:
   80 mensajes de chat, 12 generaciones de plan y 6 revisiones de progreso. Se cambia en la función
@@ -113,7 +140,7 @@ Generar una semana entera hace varias peticiones a la IA y puede tardar 1–2 mi
 - Coste orientativo: un mensaje de chat ronda 0,01–0,04 USD; un día de plan, 0,03–0,08 USD
   (estimaciones; dependen de la longitud de las respuestas).
 
-## 6. Pruebas
+### 6. Pruebas
 
 ```bash
 npm run check      # TypeScript + lint + 28 pruebas unitarias (lógica, operaciones y chat con IA simulada)

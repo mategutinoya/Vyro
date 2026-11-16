@@ -69,6 +69,7 @@ const readBody = (req) => new Promise((ok) => { let d = ''; req.on('data', (c) =
 async function auth(req, res, url, body) {
   const path = url.pathname.replace('/auth/v1', '');
   if (path === '/signup') {
+    console.log('[auth] registro normal (signup)');
     const { email, password } = body;
     const exists = await pool.query('select 1 from auth.users where email = $1', [email]);
     if (exists.rowCount) return send(res, 422, { code: 422, error_code: 'user_already_exists', msg: 'User already registered' });
@@ -97,6 +98,16 @@ async function auth(req, res, url, body) {
     const r = await pool.query('select id, email from auth.users where id = $1', [claims.sub]);
     if (!r.rowCount) return send(res, 403, { code: 403, error_code: 'user_not_found', msg: 'User not found' });
     return send(res, 200, userJson(r.rows[0]));
+  }
+  if (path === '/admin/users' && req.method === 'POST') {
+    console.log('[auth] cuenta creada ya confirmada (admin)');
+    const { email, password } = body;
+    const exists = await pool.query('select 1 from auth.users where email = $1', [email]);
+    if (exists.rowCount) return send(res, 422, { code: 422, error_code: 'email_exists', msg: 'A user with this email address has already been registered' });
+    const id = randomUUID();
+    await pool.query('insert into auth.users (id, email) values ($1, $2)', [id, email]);
+    await pool.query('insert into auth.e2e_passwords (id, password) values ($1, $2)', [id, password]);
+    return send(res, 200, userJson({ id, email }));
   }
   if (path === '/logout') return send(res, 204);
   return send(res, 404, { msg: `auth ${path} no implementado` });

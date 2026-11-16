@@ -30,7 +30,11 @@ export const loadSession = cache(async (): Promise<Session | null> => {
   const userId = data?.claims?.sub as string | undefined;
   if (!userId) return null;
   const { data: profile, error } = await db.from('user_profiles').select('*').eq('id', userId).maybeSingle();
-  if (error) throw new Error(`No se pudo leer el perfil: ${error.message}`);
+  if (error) {
+    // Tablas sin instalar: se explica cómo hacerlo en vez de mostrar un error técnico.
+    if (/does not exist|Could not find the table|PGRST205|42P01/i.test(`${error.code} ${error.message}`)) redirect('/configuracion/tablas');
+    throw new Error(`No se pudo leer el perfil: ${error.message}`);
+  }
   if (!profile) return null;
   const p = profile as Profile;
   return { db, userId, email: (data?.claims?.email as string) ?? null, profile: p, today: todayIn(p.timezone || DEFAULT_TZ) };

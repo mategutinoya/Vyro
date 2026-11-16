@@ -3,6 +3,7 @@
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 
+import { adminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 
 export interface AuthState {
@@ -13,7 +14,7 @@ export interface AuthState {
 function message(err: string): string {
   if (/invalid login credentials/i.test(err)) return 'Correo o contraseña incorrectos.';
   if (/email not confirmed/i.test(err)) return 'Confirma tu correo antes de entrar (revisa tu bandeja de entrada).';
-  if (/already registered|already exists/i.test(err)) return 'Ya existe una cuenta con este correo. Inicia sesión.';
+  if (/already (been )?registered|already exists|email_exists/i.test(err)) return 'Ya existe una cuenta con este correo. Inicia sesión.';
   if (/password/i.test(err) && /least|short|weak/i.test(err)) return 'La contraseña debe tener al menos 8 caracteres.';
   if (/rate limit/i.test(err)) return 'Demasiados intentos. Espera un momento.';
   return 'No se pudo completar. Inténtalo de nuevo.';
@@ -34,6 +35,16 @@ export async function authAction(_prev: AuthState, form: FormData): Promise<Auth
   }
 
   if (form.get('terms') !== 'on') return { error: 'Debes aceptar el aviso de orientación nutricional y privacidad.' };
+  // Registro directo (sin correo de confirmación) cuando el servidor tiene la clave de servicio.
+  const admin = adminClient();
+  if (admin) {
+    const { error: createErr } = await admin.auth.admin.createUser({ email, password, email_confirm: true });
+    if (createErr) return { error: message(createErr.message) };
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return { error: message(error.message) };
+    redirect('/bienvenida');
+  }
+
   const h = await headers();
   const origin = h.get('origin') ?? `https://${h.get('host')}`;
   const { data, error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: `${origin}/auth/callback` } });
