@@ -33,10 +33,18 @@ const errors = [];
 page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
 page.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errors.push(`console: ${m.text().slice(0, 200)}`); });
 const overflow = [];
-const shot = async (n) => {
+// SHOT_MODE=viewport: capturas del tamaño de la pantalla del móvil (opcionalmente centradas en un texto).
+const VIEWPORT = process.env.SHOT_MODE === 'viewport';
+const shot = async (n, focus) => {
   const w = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   if (w > 1) overflow.push(`${n}: ${w}px`);
-  await page.screenshot({ path: `${SHOTS}/${n}.png`, fullPage: true });
+  if (VIEWPORT && focus) {
+    await page.getByText(focus).first().evaluate((el) => el.scrollIntoView({ block: 'center' }));
+    await page.waitForTimeout(600);
+  } else if (VIEWPORT) {
+    await page.waitForTimeout(600); // deja terminar las animaciones de entrada
+  }
+  await page.screenshot({ path: `${SHOTS}/${n}.png`, fullPage: !VIEWPORT });
 };
 const expectText = async (t, timeout = 15000) => page.getByText(t, { exact: false }).first().waitFor({ timeout });
 
@@ -100,7 +108,7 @@ try {
     await page.getByText('Pendiente').first().waitFor();
     const n = await page.getByText('Pendiente').count();
     if (n < 4) throw new Error(`esperaba 4 comidas, hay ${n}`);
-    await shot('06-hoy-plan');
+    await shot('06-hoy-plan', 'Desayuno');
   });
 
   await step('"Lo comí" marca el desayuno como cumplido', async () => {
@@ -127,12 +135,13 @@ try {
     await page.getByRole('button', { name: 'Proponer otro plato' }).click();
     await page.waitForFunction((b) => document.querySelectorAll('h3')[3]?.textContent !== b, before, { timeout: 20000 });
     await expectText('Cambios del día');
-    await shot('08-hoy-cambios');
+    await shot('08-hoy-cambios', 'Comiste:');
   });
 
   await step('ver receta e ingredientes', async () => {
     await page.getByRole('button', { name: 'Ver receta' }).first().click();
     await expectText('Preparación');
+    await shot('08b-receta', 'Ingredientes');
     await page.getByRole('button', { name: 'Guardar favorito' }).first().click();
     await expectText('guardado en favoritos');
   });
@@ -198,7 +207,7 @@ try {
     await page.getByRole('button', { name: /Revisar mi progreso/ }).click();
     await expectText('ritmo estable', 20000);
     if (await page.getByText('Sugerencia moderada').count()) throw new Error('sugirió ajuste con menos de 3 semanas de datos');
-    await shot('14-progreso');
+    await shot('14-progreso', 'ritmo estable');
   });
 
   await step('inicio con datos', async () => {
